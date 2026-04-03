@@ -4,6 +4,37 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
+  // Function to unregister a participant
+  async function unregisterParticipant(activity, email) {
+    try {
+      const response = await fetch(
+        `/activities/${encodeURIComponent(activity)}/participants/${encodeURIComponent(email)}`,
+        { method: "DELETE" }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        messageDiv.textContent = result.message;
+        messageDiv.className = "success";
+        fetchActivities();
+      } else {
+        messageDiv.textContent = result.detail || "An error occurred";
+        messageDiv.className = "error";
+      }
+
+      messageDiv.classList.remove("hidden");
+      setTimeout(() => {
+        messageDiv.classList.add("hidden");
+      }, 5000);
+    } catch (error) {
+      messageDiv.textContent = "Failed to remove participant. Please try again.";
+      messageDiv.className = "error";
+      messageDiv.classList.remove("hidden");
+      console.error("Error removing participant:", error);
+    }
+  }
+
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
@@ -25,9 +56,39 @@ document.addEventListener("DOMContentLoaded", () => {
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <p><strong>Participants:</strong></p>
+          <ul class="participants-list">
+  ${
+    details.participants.length
+      ? details.participants
+          .map(
+            (email) =>
+              `<li>
+                <span class="participant-email">${email}</span>
+                <button
+                  class="remove-participant"
+                  data-activity="${name}"
+                  data-email="${email}"
+                  aria-label="Remove ${email}"
+                >🗑️</button>
+              </li>`
+          )
+          .join("")
+      : `<li class="no-participants">No participants yet</li>`
+  }
+</ul>
         `;
 
         activitiesList.appendChild(activityCard);
+
+        activityCard.addEventListener("click", (event) => {
+          const button = event.target.closest(".remove-participant");
+          if (!button) return;
+
+          const participantEmail = button.dataset.email;
+          const activityName = button.dataset.activity;
+          unregisterParticipant(activityName, participantEmail);
+        });
 
         // Add option to select dropdown
         const option = document.createElement("option");
